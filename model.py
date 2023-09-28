@@ -6,15 +6,40 @@ from keras.layers import Dense, Dropout
 from keras.callbacks import EarlyStopping
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+
+
+# Data preproccessing
 
 df = pd.read_csv('data.csv')
 
-X=df[['school_year','age','gender','bmi','who_bmi','phq_score','depression_severity','depressiveness','suicidal','depression_treatment','gad_score','anxiety_severity','anxiousness','anxiety_diagnosis','anxiety_treatment','epworth_score','sleepiness']].values
+df_clean = df.dropna()
 
-y = df[['depression_diagnosis']].values
+label_encoder = LabelEncoder()
+
+
+df_clean['gender'] = label_encoder.fit_transform(df_clean['gender'])
+df_clean['who_bmi'] = label_encoder.fit_transform(df_clean['who_bmi'])
+df_clean['depression_severity'] = label_encoder.fit_transform(df_clean['depression_severity'])
+df_clean['depressiveness'] = label_encoder.fit_transform(df_clean['depressiveness'])
+df_clean['suicidal'] = label_encoder.fit_transform(df_clean['suicidal'])
+df_clean['depression_diagnosis'] = label_encoder.fit_transform(df_clean['depression_diagnosis'])
+df_clean['depression_treatment'] = label_encoder.fit_transform(df_clean['depression_treatment'])
+df_clean['anxiety_severity'] = label_encoder.fit_transform(df_clean['anxiety_severity'])
+df_clean['anxiousness'] = label_encoder.fit_transform(df_clean['anxiousness'])
+df_clean['anxiety_diagnosis'] = label_encoder.fit_transform(df_clean['anxiety_diagnosis'])
+df_clean['anxiety_treatment'] = label_encoder.fit_transform(df_clean['anxiety_treatment'])
+df_clean['sleepiness'] = label_encoder.fit_transform(df_clean['sleepiness'])
+
+del df_clean['id']
+
+X = df_clean.drop('depression_diagnosis',axis=1)
+y = df_clean.pop('depression_diagnosis')
+
+
 
 ros = RandomOverSampler(random_state=42)
-
 X_res, y_res = ros.fit_resample(X, y)
 
 X_train, X_test, y_train, y_test = train_test_split(X_res, y_res, test_size=0.2, random_state=42)
@@ -27,7 +52,7 @@ X_train = scaler.transform(X_train)
 
 X_test = scaler.transform(X_test)
 
-#########################################
+# Creating a model
 
 model = Sequential()
 
@@ -45,9 +70,9 @@ model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']
 
 early_stop = EarlyStopping(monitor='val_loss', mode='min', verbose = 1, patience=25)
 
-model.fit(x=X_train, y=y_train, epochs=350, validation_data=(X_test, y_test), verbose=0, callbacks=[early_stop], batch_size=16)
+model.fit(x=X_train, y=y_train, epochs=140, validation_data=(X_test, y_test), verbose=0, callbacks=[early_stop], batch_size=32)
 
-######################################################################
+# Evaluating the model
 
 train_accuracy = model.history.history['accuracy']
 
@@ -62,6 +87,22 @@ model.evaluate(X_test, y_test)
 test_predictions = model.predict(X_test)
 
 bin_predictions = (test_predictions >= 0.5).astype(int)
+
+
+plt.plot(train_loss, label='train_loss')
+plt.plot(val_loss, label='val_loss')
+plt.title('LOSS')
+plt.legend()
+plt.show()
+
+plt.plot(train_accuracy, label='train_accuracy')
+plt.plot(val_accuracy, label='val_accuracy')
+plt.title('ACCURACY')
+plt.legend()
+plt.show()
+
+
+
 
 print(classification_report(y_test, bin_predictions))
 
